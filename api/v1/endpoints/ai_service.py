@@ -32,8 +32,6 @@ async def get_models(_ = Depends(start_ollama)):
 async def ask_sync(message: ChatSchema, _ = Depends(start_ollama)):
     try:
 
-        echo_ai = ECHO.build_start(11,234, "")
-
         start = datetime.datetime.now()
 
         input_content = [{"role": "system", "content": message.template}, {"role": "user", "content": message.content}]
@@ -67,12 +65,6 @@ async def ask_sync(message: ChatSchema, _ = Depends(start_ollama)):
 
         storage.ia_usage(data)
 
-        # ATUALIZA OS PARÂMETROS NO ECHO
-        echo_ai.setTransactionCounter(output_tokens)
-
-        # ENVIA A FINALIZAÇÃO PARA O ECHO
-        echo_ai.automationFinish()
-
         return JSONResponse(content={"response": full_response})
 
     except:
@@ -84,8 +76,6 @@ async def ask_sync(message: ChatSchema, _ = Depends(start_ollama)):
 async def ask_async(message: ChatSchema, _ = Depends(start_ollama)):
     async def stream_response():
         try:
-
-            echo_ai = ECHO.build_start(11, 234, "")
 
             start = datetime.datetime.now()
 
@@ -125,12 +115,6 @@ async def ask_async(message: ChatSchema, _ = Depends(start_ollama)):
             })
 
             storage.ia_usage(data)
-
-            # ATUALIZA OS PARÂMETROS NO ECHO
-            echo_ai.setTransactionCounter(output_tokens)
-
-            # ENVIA A FINALIZAÇÃO PARA O ECHO
-            echo_ai.automationFinish()
 
         except Exception:
             error = traceback.format_exc()

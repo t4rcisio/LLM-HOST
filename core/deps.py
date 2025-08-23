@@ -8,11 +8,41 @@ from core.configs import Settings
 
 _model_client = None  # cache do modelo
 
+
+
+BASE_URL = "http://localhost:8000"
+
+def check_vllm():
+    try:
+        # Verifica o health endpoint
+        health = requests.get(f"{BASE_URL}/health", timeout=5)
+        if health.status_code == 200:
+            print("✅ vLLM está rodando!")
+        else:
+            print("⚠️ vLLM respondeu, mas com erro:", health.text)
+            return
+
+        # Lista os modelos carregados
+        models = requests.get(f"{BASE_URL}/v1/models", timeout=5)
+        if models.status_code == 200:
+            data = models.json()
+            print("📦 Modelos carregados:")
+            for m in data.get("data", []):
+                print(" -", m.get("id"))
+        else:
+            print("⚠️ Erro ao listar modelos:", models.text)
+
+    except requests.exceptions.ConnectionError:
+        print("❌ Não consegui conectar ao vLLM. Ele está rodando na porta 8000?")
+    except Exception as e:
+        print("⚠️ Erro inesperado:", e)
+
 def get_model():
     """
     Dependência que inicializa o cliente OpenAI/vLLM
     apenas uma vez e retorna sempre o mesmo objeto.
     """
+
     global _model_client
     if _model_client is None:
         _model_client = OpenAI(api_key=Settings.VLLM_API_KEY, base_url=Settings.VLLM_API_BASE)
@@ -60,3 +90,4 @@ def decodeResponse(res):
        return res
 
 
+check_vllm()

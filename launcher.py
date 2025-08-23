@@ -2,11 +2,13 @@
 import threading
 import subprocess
 import sys
-import os
 import webbrowser
 
 import pystray
-from PIL import Image, ImageDraw
+from PIL import Image
+
+from core.configs import settings
+url = 'http://127.0.0.1' + ":" +settings.PORT
 
 uvicorn_process = None
 
@@ -15,17 +17,17 @@ def create_image():
 
 def start_uvicorn():
     global uvicorn_process
-    uvicorn_process = subprocess.Popen([sys.executable, "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "5000", "--reload"])
+    uvicorn_process = subprocess.Popen([sys.executable, "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", settings.PORT, "--reload"])
 
 def open_server_url(icon, item):
-    webbrowser.open("http://127.0.0.1:5000")
+    webbrowser.open(url)
 
 
 def open_documentation_url(icon, item):
-    webbrowser.open("http://127.0.0.1:5000/redoc")
+    webbrowser.open(url+"/redoc")
 
 def open_documentation_url_docs(icon, item):
-    webbrowser.open("http://127.0.0.1:5000/docs")
+    webbrowser.open(url+"/docs")
 
 def stop_uvicorn(icon, item):
     global uvicorn_process
