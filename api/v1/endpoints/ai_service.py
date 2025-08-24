@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import traceback
 
@@ -10,19 +11,27 @@ import ollama
 from transformers import AutoTokenizer
 
 from core.deps import start_ollama
-from core import ECHO
 import core.database as storage
 from schema.chat_schema import ChatSchema
 from fastapi.responses import StreamingResponse
-
-
 router = APIRouter()
+
+from concurrent.futures import ThreadPoolExecutor
+import os
+
+executor = ThreadPoolExecutor(max_workers=os.cpu_count())
 
 
 @router.get("/models", status_code=status.HTTP_200_OK, response_model=list)
 async def get_models(_ = Depends(start_ollama)):
     try:
-        modelos = ollama.list()
+
+        loop = asyncio.get_event_loop()
+
+        modelos = await loop.run_in_executor(
+            executor,
+            lambda:ollama.list()
+        )
         return sorted([modelo['model'] for modelo in modelos['models']])
     except:
         return []
@@ -77,16 +86,20 @@ async def ask_async(message: ChatSchema, _ = Depends(start_ollama)):
     async def stream_response():
         try:
 
+            loop = asyncio.get_event_loop()
             start = datetime.datetime.now()
 
             input_content = [{"role": "system", "content": message.template}, {"role": "user", "content": message.content}]
 
-            response = ollama.chat(
-                message.agent,
-                input_content,
-                stream=True
+            response = await loop.run_in_executor(
+                executor,  # usa ThreadPoolExecutor padrão
+                lambda: ollama.chat(
+                    message.agent,
+                    [{"role": "system", "content": message.template},
+                     {"role": "user", "content": message.content}],
+                    stream=True
+                )
             )
-
             full_response = ""
 
             for chunk in response:

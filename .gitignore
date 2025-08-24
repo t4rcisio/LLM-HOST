@@ -66,6 +66,7 @@ Thumbs.db
 # Local configs
 config.local.json
 settings.local.py
+teste.py
 
 # Docker
 *.pid
