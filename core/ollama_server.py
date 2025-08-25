@@ -29,7 +29,8 @@ class OllamaQueue:
             self.models_dir = f"/home/{os.getlogin()}/.ollama/models"
 
 
-        print(os.listdir(self.models_dir))
+        print("DIRETÓRIO: ", self.models_dir)
+        print("PASTAS DO DIR",os.listdir(self.models_dir))
 
         # {proc_id: {"PROCESS": Popen, "PORT": int, "CLIENT": Client}}
         self.processes: Dict[int, dict] = {}
