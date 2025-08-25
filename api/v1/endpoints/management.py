@@ -18,7 +18,6 @@ async def get_logs():
         None,  # usa ThreadPoolExecutor padrão
         lambda: storage.ia_usage()
     )
-    print(data)
     if not isinstance(data, list):
         data = []
     return data

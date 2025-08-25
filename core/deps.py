@@ -88,6 +88,3 @@ def decodeResponse(res):
       return res.decode('utf-8')
    except:
        return res
-
-
-check_vllm()

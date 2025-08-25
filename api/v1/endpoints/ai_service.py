@@ -22,6 +22,10 @@ import os
 executor = ThreadPoolExecutor(max_workers=os.cpu_count())
 
 
+from core import ollama_server
+olla_queue = ollama_server.OllamaQueue()
+
+
 @router.get("/models", status_code=status.HTTP_200_OK, response_model=list)
 async def get_models(_ = Depends(start_ollama)):
     try:
@@ -38,14 +42,14 @@ async def get_models(_ = Depends(start_ollama)):
 
 
 @router.post("/ask_sync", status_code=status.HTTP_200_OK, response_class=StreamingResponse)
-async def ask_sync(message: ChatSchema, _ = Depends(start_ollama)):
+async def ask_sync(message: ChatSchema, server = Depends(olla_queue.start)):
     try:
 
         start = datetime.datetime.now()
 
         input_content = [{"role": "system", "content": message.template}, {"role": "user", "content": message.content}]
 
-        response = ollama.chat(
+        response = server['CLIENT'].chat(
             message.agent,
             input_content,
         )
@@ -80,9 +84,12 @@ async def ask_sync(message: ChatSchema, _ = Depends(start_ollama)):
         error = traceback.format_exc()
         return JSONResponse(status_code=500, content={"error": error})
 
+    finally:
+        olla_queue.stop(server["ID"])
+
 
 @router.post("/ask_async", status_code=status.HTTP_200_OK, response_class=StreamingResponse)
-async def ask_async(message: ChatSchema, _ = Depends(start_ollama)):
+async def ask_async(message: ChatSchema, server = Depends(olla_queue.start)):
     async def stream_response():
         try:
 
@@ -93,7 +100,7 @@ async def ask_async(message: ChatSchema, _ = Depends(start_ollama)):
 
             response = await loop.run_in_executor(
                 executor,  # usa ThreadPoolExecutor padrão
-                lambda: ollama.chat(
+                lambda: server['CLIENT'].chat(
                     message.agent,
                     [{"role": "system", "content": message.template},
                      {"role": "user", "content": message.content}],
@@ -132,6 +139,11 @@ async def ask_async(message: ChatSchema, _ = Depends(start_ollama)):
         except Exception:
             error = traceback.format_exc()
             yield f"ERRO: {error}"
+
+        finally:
+            olla_queue.stop(server["ID"])
+
+
 
     return StreamingResponse(stream_response(), media_type="text/plain")
 

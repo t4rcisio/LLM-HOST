@@ -12,6 +12,11 @@ def ia_usage(data=False):
     return __dataControl(DATA_PATH + "\\ia_usage.json", data)
 
 
+def queue(data=False):
+
+    return __dataControl(DATA_PATH + "\\queue.json", data)
+
+
 
 def __dataControl(path, data=False):
 
