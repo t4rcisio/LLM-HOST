@@ -22,6 +22,12 @@ class OllamaQueue:
         self.models_dir = models_dir
         self.http_timeout = http_timeout
 
+
+        if os.name == "nt":
+            self.models_dir = f"C:\\Users\\{os.getlogin()}\\.ollama\\models"
+        else:
+            self.models_dir = os.path.expanduser("~/.ollama/models")
+
         # {proc_id: {"PROCESS": Popen, "PORT": int, "CLIENT": Client}}
         self.processes: Dict[int, dict] = {}
 
