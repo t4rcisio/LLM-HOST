@@ -28,6 +28,9 @@ class OllamaQueue:
         else:
             self.models_dir = os.path.expanduser("~/.ollama/models")
 
+
+        print(os.listdir(self.models_dir))
+
         # {proc_id: {"PROCESS": Popen, "PORT": int, "CLIENT": Client}}
         self.processes: Dict[int, dict] = {}
 
