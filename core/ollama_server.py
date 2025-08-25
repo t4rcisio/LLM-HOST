@@ -62,6 +62,10 @@ class OllamaQueue:
 
     # ---------------- ciclo de vida ----------------
     def start(self, wait_ready: float = 15.0):
+
+        if  not os.name == "nt":
+            return self.start_linux()
+
         port = self._get_free_port()
         env = os.environ.copy()
         env["OLLAMA_HOST"] = f"{self.host}:{port}"
@@ -97,6 +101,58 @@ class OllamaQueue:
         while time.time() < deadline:
             if proc.poll() is not None:
                 raise RuntimeError(f"ollama serve saiu prematuramente (código {proc.returncode}). Veja {log_file}")
+            if self._health(port):
+                client = Client(host=f"http://{self.host}:{port}", timeout=self.http_timeout)
+                self.processes[proc_id]["CLIENT"] = client
+                return self.processes[proc_id]
+            time.sleep(0.5)
+
+        raise TimeoutError(f"Ollama não ficou pronto em {wait_ready}s. Veja logs em {log_file}")
+
+
+    def start_linux(self, wait_ready: float = 15.0):
+        # pega porta livre
+        port = self._get_free_port()
+
+        # prepara o ambiente
+        env = os.environ.copy()
+        env["OLLAMA_HOST"] = f"{self.host}:{port}"
+
+        # diretório de modelos absoluto
+        if self.models_dir:
+            self.models_dir = os.path.expanduser(self.models_dir)
+            os.makedirs(self.models_dir, exist_ok=True)
+            env["OLLAMA_MODELS"] = self.models_dir
+
+        # diretório de logs
+        self.ollama_logs_dir = os.path.join(os.getcwd(), "ollama_logs")
+        os.makedirs(self.ollama_logs_dir, exist_ok=True)
+        log_file = os.path.join(self.ollama_logs_dir, f"ollama_{port}.log")
+        log_fh = open(log_file, "ab")
+
+        # configura flags do subprocesso
+        kwargs = dict(
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+        )
+
+        if os.name == "nt":
+            kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        else:
+            kwargs["close_fds"] = True
+
+        # inicia o servidor Ollama
+        proc = subprocess.Popen(["ollama", "serve"], env=env, **kwargs)
+
+        proc_id = proc.pid
+        self.processes[proc_id] = {"PROCESS": proc, "PORT": port, "CLIENT": None, "ID": proc_id}
+
+        # healthcheck
+        deadline = time.time() + wait_ready
+        while time.time() < deadline:
+            if proc.poll() is not None:
+                raise RuntimeError(f"Ollama serve saiu prematuramente (código {proc.returncode}). Veja {log_file}")
             if self._health(port):
                 client = Client(host=f"http://{self.host}:{port}", timeout=self.http_timeout)
                 self.processes[proc_id]["CLIENT"] = client
