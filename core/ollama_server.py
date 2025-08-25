@@ -26,7 +26,7 @@ class OllamaQueue:
         if os.name == "nt":
             self.models_dir = f"C:\\Users\\{os.getlogin()}\\.ollama\\models"
         else:
-            self.models_dir = os.path.expanduser("~/.ollama/models")
+            self.models_dir = f"/home/{os.getlogin()}/.ollama/models"
 
 
         print(os.listdir(self.models_dir))
