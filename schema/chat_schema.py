@@ -2,6 +2,16 @@ from pydantic import BaseModel
 from typing import Optional
 
 
+
+
+class agentSchema(BaseModel):
+    agent: str
+
+    class Config:
+        orm_mode = True
+
+
+
 class ChatSchema(BaseModel):
     agent: str
     content: str
