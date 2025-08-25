@@ -103,6 +103,7 @@ class OllamaQueue:
                 raise RuntimeError(f"ollama serve saiu prematuramente (código {proc.returncode}). Veja {log_file}")
             if self._health(port):
                 client = Client(host=f"http://{self.host}:{port}", timeout=self.http_timeout)
+
                 self.processes[proc_id]["CLIENT"] = client
                 return self.processes[proc_id]
             time.sleep(0.5)

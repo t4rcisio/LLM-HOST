@@ -41,6 +41,16 @@ async def get_models(_ = Depends(start_ollama)):
         return []
 
 
+@router.post("/download", status_code=status.HTTP_200_OK, response_class=StreamingResponse)
+async def download(message: ChatSchema, server = Depends(olla_queue.start)):
+    try:
+        response = server['CLIENT'].pull(message.agent,insecure=True)
+        return JSONResponse(status_code=500, content={"error": response})
+    except:
+        error = traceback.format_exc()
+        return JSONResponse(status_code=500, content={"error": error})
+
+
 @router.post("/ask_sync", status_code=status.HTTP_200_OK, response_class=StreamingResponse)
 async def ask_sync(message: ChatSchema, server = Depends(olla_queue.start)):
     try:
