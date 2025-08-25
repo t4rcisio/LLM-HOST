@@ -12,7 +12,7 @@ from transformers import AutoTokenizer
 
 from core.deps import start_ollama
 import core.database as storage
-from schema.chat_schema import ChatSchema
+from schema.chat_schema import ChatSchema, agentSchema
 from fastapi.responses import StreamingResponse
 router = APIRouter()
 
