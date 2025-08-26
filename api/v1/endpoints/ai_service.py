@@ -54,10 +54,11 @@ async def download(message: agentSchema, server = Depends(olla_queue.start)):
         response = server['CLIENT'].pull(message.agent,insecure=True)
         resp = await  get_models()
 
+
         if message.agent in resp:
             return JSONResponse(content={"response": f"Success to download {message.agent} model"})
         else:
-            return JSONResponse(status_code=500, content={"error": f"Failed to download {message.agent} model"})
+            return JSONResponse(status_code=500, content={"error": f"Failed to download {message.agent} model\t" + str(response)})
     except:
         dataLogs = LogManager()
         log = SysLogEntry(date=datetime.datetime.now(), level="ERRO", message=traceback.format_exc(), source="/download")
