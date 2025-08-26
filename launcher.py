@@ -17,7 +17,7 @@ def create_image():
 
 def start_uvicorn():
     global uvicorn_process
-    uvicorn_process = subprocess.Popen([sys.executable, "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", settings.PORT, "--workers", "5"])
+    uvicorn_process = subprocess.Popen([sys.executable, "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", settings.PORT, "--workers", str(settings.WORKERS)])
 
 def open_server_url(icon, item):
     webbrowser.open(url)

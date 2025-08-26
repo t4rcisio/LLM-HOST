@@ -15,6 +15,18 @@ class LogEntry(BaseModel):
     model_name: str
 
 
+    class Config:
+        orm_mode = True
+
+
+
+class SysLogEntry(BaseModel):
+    date: datetime
+    level: str
+    message: str
+    source: Optional[str] = None
+    user_id: Optional[str] = None
+    ip: Optional[str] = None
 
     class Config:
         orm_mode = True

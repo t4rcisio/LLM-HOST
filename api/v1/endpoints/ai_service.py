@@ -12,15 +12,18 @@ from transformers import AutoTokenizer
 
 from core.deps import start_ollama
 import core.database as storage
+from core.logs import LogManager
 from schema.chat_schema import ChatSchema, agentSchema
 from fastapi.responses import StreamingResponse
+
+from schema.log_schema import SysLogEntry
+
 router = APIRouter()
 
 from concurrent.futures import ThreadPoolExecutor
 import os
 
 executor = ThreadPoolExecutor(max_workers=os.cpu_count())
-
 
 from core import ollama_server
 olla_queue = ollama_server.OllamaQueue()
@@ -38,6 +41,10 @@ async def get_models(_ = Depends(start_ollama)):
         )
         return sorted([modelo['model'] for modelo in modelos['models']])
     except:
+
+        dataLogs = LogManager()
+        log = SysLogEntry(date=datetime.datetime.now(), level="ERRO", message=traceback.format_exc(), source="/models")
+        dataLogs.write_log(log)
         return []
 
 
@@ -45,10 +52,18 @@ async def get_models(_ = Depends(start_ollama)):
 async def download(message: agentSchema, server = Depends(olla_queue.start)):
     try:
         response = server['CLIENT'].pull(message.agent,insecure=True)
-        return JSONResponse(status_code=500, content={"error": response})
+        resp = get_models()
+
+        if message.agent in resp:
+            return JSONResponse(content={"response": f"Success to download {message.agent} model"})
+        else:
+            return JSONResponse(status_code=500, content={"error": f"Failed to download {message.agent} model"})
     except:
-        error = traceback.format_exc()
-        return JSONResponse(status_code=500, content={"error": error})
+
+        dataLogs = LogManager()
+        log = SysLogEntry(date=datetime.datetime.now(), level="ERRO", message=traceback.format_exc(), source="/download")
+        dataLogs.write_log(log)
+        return JSONResponse(status_code=500, content={"error": "Ocorreu um erro ao processar a solicitação"})
 
 
 @router.post("/ask_sync", status_code=status.HTTP_200_OK, response_class=StreamingResponse)
@@ -91,8 +106,10 @@ async def ask_sync(message: ChatSchema, server = Depends(olla_queue.start)):
         return JSONResponse(content={"response": full_response})
 
     except:
-        error = traceback.format_exc()
-        return JSONResponse(status_code=500, content={"error": error})
+        dataLogs = LogManager()
+        log = SysLogEntry(date=datetime.datetime.now(), level="ERRO", message=traceback.format_exc(),source="/ask_sync")
+        dataLogs.write_log(log)
+        return JSONResponse(status_code=500, content={"error": "Ocorreu um erro ao processar a solicitação"})
 
     finally:
         olla_queue.stop(server["ID"])
@@ -147,8 +164,10 @@ async def ask_async(message: ChatSchema, server = Depends(olla_queue.start)):
             storage.ia_usage(data)
 
         except Exception:
-            error = traceback.format_exc()
-            yield f"ERRO: {error}"
+            dataLogs = LogManager()
+            log = SysLogEntry(date=datetime.datetime.now(), level="ERRO", message=traceback.format_exc(),source="/ask_async")
+            dataLogs.write_log(log)
+            yield {"error": "Ocorreu um erro ao processar a solicitação"}
 
         finally:
             olla_queue.stop(server["ID"])
