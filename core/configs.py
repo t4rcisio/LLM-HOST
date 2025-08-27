@@ -10,8 +10,8 @@ class Settings:
     VLLM_API_KEY = "EMPTY"
     VLLM_API_BASE = "http://localhost:8000/v1"
 
-    WORKERS: int = 5
-    OLLAMA_NUM_PARALLEL: int = 4
+    WORKERS: int = 9
+    OLLAMA_NUM_PARALLEL: int = 5
 
 
 
