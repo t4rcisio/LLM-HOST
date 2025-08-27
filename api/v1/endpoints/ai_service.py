@@ -1,6 +1,7 @@
-import asyncio
+
 import datetime
 import traceback
+import uuid
 
 from fastapi import status
 from fastapi import APIRouter
@@ -28,6 +29,9 @@ executor = ThreadPoolExecutor(max_workers=os.cpu_count())
 from core import ollama_server
 olla_queue = ollama_server.OllamaQueue()
 
+import asyncio
+
+
 
 @router.get("/models", status_code=status.HTTP_200_OK, response_model=list)
 async def get_models(_ = Depends(start_ollama)):
@@ -54,7 +58,6 @@ async def download(message: agentSchema, server = Depends(olla_queue.start)):
         response = server['CLIENT'].pull(message.agent,insecure=True)
         resp = await  get_models()
 
-
         if message.agent in resp:
             return JSONResponse(content={"response": f"Success to download {message.agent} model"})
         else:
@@ -66,122 +69,38 @@ async def download(message: agentSchema, server = Depends(olla_queue.start)):
         return JSONResponse(status_code=500, content={"error": "Ocorreu um erro ao processar a solicitação"})
 
 
-@router.post("/ask_sync", status_code=status.HTTP_200_OK, response_class=StreamingResponse)
-async def ask_sync(message: ChatSchema, server = Depends(olla_queue.start)):
-    try:
 
-        start = datetime.datetime.now()
+@router.get("/job/{job_id}", status_code=status.HTTP_200_OK)
+async def jobs_(job_id: str):
 
-        input_content = [{"role": "system", "content": message.template}, {"role": "user", "content": message.content}]
+    data = storage.queue()
+    if not isinstance(data, dict):
+        data = {}
 
-        response = server['CLIENT'].chat(
-            message.agent,
-            input_content,
-        )
+    if job_id not in data:
+        return {"error": "job não encontrado"}
 
-        full_response = response['message']['content']
-
-        # gravação de uso
-        total_s = (datetime.datetime.now() - start).total_seconds() * 1_000_000_000
-        output_tokens = count_tokens_qwen(full_response)
-        input_tokens = count_tokens_qwen(str(input_content))
-
-        total_tokens = input_tokens + output_tokens
-
-        data = storage.ia_usage()
-        if not isinstance(data, list):
-            data = []
-
-        data.append({
-            "date": str(start),
-            "total_seconds": total_s,
-            "total_tokens": total_tokens,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "model_name": message.agent,
-        })
-
-        storage.ia_usage(data)
-
-        return JSONResponse(content={"response": full_response})
-
-    except:
-        dataLogs = LogManager()
-        log = SysLogEntry(date=datetime.datetime.now(), level="ERRO", message=traceback.format_exc(),source="/ask_sync")
-        dataLogs.write_log(log)
-        return JSONResponse(status_code=500, content={"error": "Ocorreu um erro ao processar a solicitação"})
-
-    finally:
-        olla_queue.stop(server["ID"])
+    return data[job_id]
 
 
-@router.post("/ask_async", status_code=status.HTTP_200_OK, response_class=StreamingResponse)
-async def ask_async(message: ChatSchema, server = Depends(olla_queue.start)):
-    async def stream_response():
-        try:
+@router.post("/new/job", status_code=status.HTTP_200_OK)
+async def ask_sync(message: ChatSchema):
+    data = storage.queue()
 
-            loop = asyncio.get_event_loop()
-            start = datetime.datetime.now()
+    if not isinstance(data, dict):
+        data = {}
 
-            input_content = [{"role": "system", "content": message.template}, {"role": "user", "content": message.content}]
+    job_id = str(uuid.uuid4())
 
-            response = await loop.run_in_executor(
-                executor,  # usa ThreadPoolExecutor padrão
-                lambda: server['CLIENT'].chat(
-                    message.agent,
-                    [{"role": "system", "content": message.template},
-                     {"role": "user", "content": message.content}],
-                    stream=True
-                )
-            )
-            full_response = ""
+    data[job_id] = {"ID": job_id,
+                    "QUEUED": str(datetime.datetime.now()),
+                    "PARAMS": {"agent": message.agent,
+                               "template": message.template,
+                               "content": message.content,
+                               },
+                    "RESULT":"",
+                    "STATE": "ON QUEUE"}
 
-            for chunk in response:
-                content = chunk['message'].content
-                full_response += content
-                yield content
+    storage.queue(data)
+    return {"ID": job_id, 'STATUS': "ON QUEUE"}
 
-            # gravação de uso
-            total_s = (datetime.datetime.now() - start).total_seconds() * 1_000_000_000
-            output_tokens = count_tokens_qwen(full_response)
-            input_tokens = count_tokens_qwen(str(input_content))
-
-            total_tokens = input_tokens + output_tokens
-
-            data = storage.ia_usage()
-            if not isinstance(data, list):
-                data = []
-
-            data.append({
-                "date": str(start),
-                "total_seconds": total_s,
-                "total_tokens": total_tokens,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "model_name": message.agent,
-            })
-
-            storage.ia_usage(data)
-
-        except Exception:
-            dataLogs = LogManager()
-            log = SysLogEntry(date=datetime.datetime.now(), level="ERRO", message=traceback.format_exc(),source="/ask_async")
-            dataLogs.write_log(log)
-            yield {"error": "Ocorreu um erro ao processar a solicitação"}
-
-        finally:
-            pass
-            #olla_queue.stop(server["ID"])
-
-
-
-    return StreamingResponse(stream_response(), media_type="text/plain")
-
-
-
-def count_tokens_qwen(text):
-    try:
-        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-1.7B", trust_remote_code=True)
-        return len(tokenizer.encode(text))
-    except:
-        return len(str(text).split(" "))
