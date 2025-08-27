@@ -8,6 +8,7 @@ from typing import Optional, Dict
 from ollama import Client
 import psutil
 import signal
+from core.configs import Settings
 
 class OllamaQueue:
     def __init__(
@@ -17,8 +18,15 @@ class OllamaQueue:
         models_dir: Optional[str] = None,
         http_timeout: float = 60.0,
     ):
+
+
         self.host = host
-        self.ports = ports or [11434, 11435, 11436, 11437, 11438]
+        self.ports = []
+        self.mapPort = {}
+        for i in range(0,Settings.OLLAMA_NUM_PARALLEL):
+            self.ports.append(11434+i)
+            self.mapPort[11434+i] = 0
+
         self.models_dir = models_dir
         self.http_timeout = http_timeout
 
@@ -48,7 +56,15 @@ class OllamaQueue:
         for port in self.ports:
             if self._port_free(port):
                 return port
-        raise RuntimeError("Nenhuma porta disponível")
+
+        lessPort = 99999999
+        k_port = 11434
+        for port in self.mapPort:
+            if self.mapPort[port] <= lessPort:
+                k_port = port
+                lessPort = self.mapPort[port]
+
+        return k_port
 
     def _get_pid_from_port(self, port: int):
         for conn in psutil.net_connections(kind='inet'):

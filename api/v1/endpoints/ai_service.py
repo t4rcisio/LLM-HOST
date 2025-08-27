@@ -170,7 +170,8 @@ async def ask_async(message: ChatSchema, server = Depends(olla_queue.start)):
             yield {"error": "Ocorreu um erro ao processar a solicitação"}
 
         finally:
-            olla_queue.stop(server["ID"])
+            pass
+            #olla_queue.stop(server["ID"])
 
 
 
