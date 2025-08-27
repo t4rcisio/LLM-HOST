@@ -55,6 +55,7 @@ class OllamaQueue:
     def _get_free_port(self) -> int:
         for port in self.ports:
             if self._port_free(port):
+                print("USING PORT", port)
                 return port
 
         lessPort = 99999999
@@ -64,6 +65,7 @@ class OllamaQueue:
                 k_port = port
                 lessPort = self.mapPort[port]
 
+        print("USING PORT", k_port)
         return k_port
 
     def _get_pid_from_port(self, port: int):
